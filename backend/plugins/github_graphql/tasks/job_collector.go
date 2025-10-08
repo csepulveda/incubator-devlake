@@ -204,10 +204,11 @@ func CollectJobs(taskCtx plugin.SubTaskContext) errors.Error {
 	// Compile deployment pattern regex if provided
 	var deploymentRegex *regexp.Regexp
 	if deploymentPattern != "" {
-		deploymentRegex, err = regexp.Compile(deploymentPattern)
-		if err != nil {
-			return errors.Default.Wrap(err, "failed to compile deployment pattern regex")
+		compiledRegex, regexErr := regexp.Compile(deploymentPattern)
+		if regexErr != nil {
+			return errors.Default.Wrap(regexErr, "failed to compile deployment pattern regex")
 		}
+		deploymentRegex = compiledRegex
 	}
 
 	err = apiCollector.InitGraphQLCollector(helper.GraphqlCollectorArgs{
