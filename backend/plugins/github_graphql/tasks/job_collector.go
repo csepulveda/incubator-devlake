@@ -166,23 +166,16 @@ func CollectJobs(taskCtx plugin.SubTaskContext) errors.Error {
 		return err
 	}
 
-	// Build the WHERE clause with deployment pattern filter if available
-	var whereClause dal.Clause
+	// Get deployment pattern from scope config if available
 	deploymentPattern := ""
 	if data.Options.ScopeConfig != nil && data.Options.ScopeConfig.DeploymentPattern != "" {
 		deploymentPattern = data.Options.ScopeConfig.DeploymentPattern
-		// Convert regex pattern to SQL LIKE pattern (simplified approach)
-		// If the pattern is a simple string or contains wildcards, use it
-		whereClause = dal.Where("repo_id = ? and connection_id=? and name REGEXP ?", data.Options.GithubId, data.Options.ConnectionId, deploymentPattern)
-	} else {
-		// Fallback to basic filter if no deployment pattern is configured
-		whereClause = dal.Where("repo_id = ? and connection_id=?", data.Options.GithubId, data.Options.ConnectionId)
 	}
 
 	clauses := []dal.Clause{
 		dal.Select("check_suite_node_id"),
 		dal.From(models.GithubRun{}.TableName()),
-		whereClause,
+		dal.Where("repo_id = ? and connection_id=?", data.Options.GithubId, data.Options.ConnectionId),
 		dal.Orderby("github_updated_at DESC"),
 	}
 	if apiCollector.IsIncremental() && apiCollector.GetSince() != nil {
