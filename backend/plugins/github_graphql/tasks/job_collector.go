@@ -198,6 +198,10 @@ func CollectJobs(taskCtx plugin.SubTaskContext) errors.Error {
 			for _, node := range query.Node {
 				runId := node.CheckSuite.WorkflowRun.DatabaseId
 				for _, checkRun := range node.CheckSuite.CheckRuns.Nodes {
+					// Filter to only include jobs named "deploy"
+					if checkRun.Name != "deploy" {
+						continue
+					}
 					dbCheckRun := &DbCheckRun{
 						RunId:                runId,
 						GraphqlQueryCheckRun: &checkRun,
