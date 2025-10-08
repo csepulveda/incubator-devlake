@@ -20,6 +20,7 @@ package tasks
 import (
 	"encoding/json"
 	"reflect"
+	"regexp"
 	"time"
 
 	"github.com/apache/incubator-devlake/core/dal"
@@ -165,10 +166,23 @@ func CollectJobs(taskCtx plugin.SubTaskContext) errors.Error {
 		return err
 	}
 
+	// Build the WHERE clause with deployment pattern filter if available
+	var whereClause dal.Clause
+	deploymentPattern := ""
+	if data.Options.ScopeConfig != nil && data.Options.ScopeConfig.DeploymentPattern != "" {
+		deploymentPattern = data.Options.ScopeConfig.DeploymentPattern
+		// Convert regex pattern to SQL LIKE pattern (simplified approach)
+		// If the pattern is a simple string or contains wildcards, use it
+		whereClause = dal.Where("repo_id = ? and connection_id=? and name REGEXP ?", data.Options.GithubId, data.Options.ConnectionId, deploymentPattern)
+	} else {
+		// Fallback to basic filter if no deployment pattern is configured
+		whereClause = dal.Where("repo_id = ? and connection_id=?", data.Options.GithubId, data.Options.ConnectionId)
+	}
+
 	clauses := []dal.Clause{
 		dal.Select("check_suite_node_id"),
 		dal.From(models.GithubRun{}.TableName()),
-		dal.Where("repo_id = ? and connection_id=?", data.Options.GithubId, data.Options.ConnectionId),
+		whereClause,
 		dal.Orderby("github_updated_at DESC"),
 	}
 	if apiCollector.IsIncremental() && apiCollector.GetSince() != nil {
@@ -187,6 +201,15 @@ func CollectJobs(taskCtx plugin.SubTaskContext) errors.Error {
 		return err
 	}
 
+	// Compile deployment pattern regex if provided
+	var deploymentRegex *regexp.Regexp
+	if deploymentPattern != "" {
+		deploymentRegex, err = regexp.Compile(deploymentPattern)
+		if err != nil {
+			return errors.Default.Wrap(err, "failed to compile deployment pattern regex")
+		}
+	}
+
 	err = apiCollector.InitGraphQLCollector(helper.GraphqlCollectorArgs{
 		Input:         iterator,
 		InputStep:     10,
@@ -198,8 +221,8 @@ func CollectJobs(taskCtx plugin.SubTaskContext) errors.Error {
 			for _, node := range query.Node {
 				runId := node.CheckSuite.WorkflowRun.DatabaseId
 				for _, checkRun := range node.CheckSuite.CheckRuns.Nodes {
-					// Filter to only include jobs named "deploy"
-					if checkRun.Name != "deploy" {
+					// Filter jobs using deployment pattern if configured
+					if deploymentRegex != nil && !deploymentRegex.MatchString(checkRun.Name) {
 						continue
 					}
 					dbCheckRun := &DbCheckRun{
@@ -223,7 +246,7 @@ func CollectJobs(taskCtx plugin.SubTaskContext) errors.Error {
 			return
 		},
 		IgnoreQueryErrors: true,
-		PageSize:          20,
+		PageSize:          100,
 	})
 	if err != nil {
 		return err
