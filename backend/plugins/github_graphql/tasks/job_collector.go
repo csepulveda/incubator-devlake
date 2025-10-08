@@ -206,7 +206,7 @@ func CollectJobs(taskCtx plugin.SubTaskContext) errors.Error {
 
 	err = apiCollector.InitGraphQLCollector(helper.GraphqlCollectorArgs{
 		Input:         iterator,
-		InputStep:     10,
+		InputStep:     50, // Increased from 10 to 50 - process 50 workflow runs per GraphQL request
 		GraphqlClient: data.GraphqlClient,
 		BuildQuery:    buildQuery,
 		GetPageInfo:   getPageInfo,
