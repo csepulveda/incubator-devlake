@@ -19,6 +19,7 @@ package api
 
 import (
 	"github.com/apache/incubator-devlake/core/context"
+	"github.com/apache/incubator-devlake/core/dal"
 	"github.com/apache/incubator-devlake/core/plugin"
 	"github.com/apache/incubator-devlake/helpers/pluginhelper/api"
 	"github.com/apache/incubator-devlake/plugins/pagerduty/models"
@@ -46,10 +47,41 @@ func Init(br context.BasicRes, p plugin.PluginMeta) {
 		func(c models.PagerDutyConnection) models.PagerDutyConnection {
 			return c.Sanitize()
 		},
-		nil,
+		ensureScopeConfigId, // Add scope config assignment before save
 		nil,
 	)
 	raProxy = api.NewDsRemoteApiProxyHelper[models.PagerDutyConnection](dsHelper.ConnApi.ModelApiHelper)
 	raScopeList = api.NewDsRemoteApiScopeListHelper[models.PagerDutyConnection, models.Service, PagerdutyRemotePagination](raProxy, listPagerdutyRemoteScopes)
 	raScopeSearch = api.NewDsRemoteApiScopeSearchHelper[models.PagerDutyConnection, models.Service](raProxy, searchPagerdutyRemoteScopes)
+}
+
+// ensureScopeConfigId automatically assigns a scope_config_id if not set
+func ensureScopeConfigId(service models.Service) models.Service {
+	// If already has a scope_config_id, don't change it
+	if service.ScopeConfigId > 0 {
+		return service
+	}
+
+	// Try to find a scope config for this connection
+	var scopeConfig models.PagerdutyScopeConfig
+	err := basicRes.GetDal().First(
+		&scopeConfig,
+		dal.Where("connection_id = ? AND id > 0", service.ConnectionId),
+		dal.Orderby("id ASC"),
+	)
+
+	if err != nil {
+		// If no scope config found, that's OK - scope_config_id stays 0
+		if basicRes.GetDal().IsErrorNotFound(err) {
+			basicRes.GetLogger().Debug("No scope config found for connection %d, service %s will have scope_config_id=0", service.ConnectionId, service.Id)
+		} else {
+			basicRes.GetLogger().Warn(err, "Error finding scope config for connection %d, service %s", service.ConnectionId, service.Id)
+		}
+		return service
+	}
+
+	// Assign the found scope_config_id
+	service.ScopeConfigId = scopeConfig.ID
+	basicRes.GetLogger().Info("Auto-assigned scope_config_id=%d to service %s (connection %d)", scopeConfig.ID, service.Id, service.ConnectionId)
+	return service
 }
