@@ -167,7 +167,6 @@ func CollectJobs(taskCtx plugin.SubTaskContext) errors.Error {
 	}
 
 	// Get deployment pattern from scope config if available
-	// This pattern will be used to filter job names (not workflow names)
 	deploymentPattern := ""
 	if data.Options.ScopeConfig != nil && data.Options.ScopeConfig.DeploymentPattern != "" {
 		deploymentPattern = data.Options.ScopeConfig.DeploymentPattern

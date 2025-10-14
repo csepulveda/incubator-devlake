@@ -189,6 +189,19 @@ func saveBlueprint(blueprint *models.Blueprint) (*models.Blueprint, errors.Error
 		return nil, err
 	}
 
+	// Auto-add clickup_metrics when blueprint has clickup connection
+	if blueprint.ProjectName != "" {
+		for _, conn := range blueprint.Connections {
+			if conn.PluginName == "clickup" {
+				var existing models.ProjectMetricSetting
+				if db.IsErrorNotFound(db.First(&existing, dal.Where("project_name = ? AND plugin_name = ?", blueprint.ProjectName, "clickup_metrics"))) {
+					db.Create(&models.ProjectMetricSetting{BaseProjectMetricSetting: models.BaseProjectMetricSetting{ProjectName: blueprint.ProjectName, BaseMetric: models.BaseMetric{PluginName: "clickup_metrics", Enable: true, PluginOption: json.RawMessage("{}")}}})
+				}
+				break
+			}
+		}
+	}
+
 	// reload schedule
 	err = reloadBlueprint(blueprint)
 	if err != nil {

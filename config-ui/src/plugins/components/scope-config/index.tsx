@@ -229,7 +229,7 @@ export const ScopeConfig = ({
           title={<PluginName plugin={plugin} name="Associate Scope Config" />}
           onCancel={handleHideDialog}
         >
-          {plugin === 'tapd' ? (
+          {plugin === 'tapd' || plugin === 'clickup' ? (
             <ScopeConfigForm
               plugin={plugin}
               connectionId={connectionId}

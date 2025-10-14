@@ -34,6 +34,7 @@ import { AzureTransformation } from '@/plugins/register/azure';
 import { TapdTransformation } from '@/plugins/register/tapd';
 import { BambooTransformation } from '@/plugins/register/bamboo';
 import { CircleCITransformation } from '@/plugins/register/circleci';
+import { ClickUpTransformation } from '@/plugins/register/clickup';
 import { PagerDutyTransformation } from '@/plugins/register/pagerduty';
 import { DOC_URL } from '@/release';
 import { operator } from '@/utils';
@@ -100,11 +101,20 @@ export const ScopeConfigForm = ({
   };
 
   const handleSubmit = async () => {
+    const payload = {
+      name,
+      entities,
+      connectionId: +connectionId,
+      ...transformation
+    };
+
+    console.log('Submitting scope config:', payload);
+
     const [success, res] = await operator(
       () =>
         !scopeConfigId || forceCreate
-          ? API.scopeConfig.create(plugin, connectionId, { name, entities, ...transformation })
-          : API.scopeConfig.update(plugin, connectionId, scopeConfigId, { name, entities, ...transformation }),
+          ? API.scopeConfig.create(plugin, connectionId, payload)
+          : API.scopeConfig.update(plugin, connectionId, scopeConfigId, payload),
       {
         setOperating,
         hideToast: true,
@@ -242,6 +252,15 @@ export const ScopeConfigForm = ({
                 />
               )}
 
+              {plugin === 'clickup' && (
+                <ClickUpTransformation
+                  connectionId={connectionId}
+                  scopeId={scopeId}
+                  transformation={transformation}
+                  setTransformation={setTransformation}
+                />
+              )}
+
               {plugin === 'github' && (
                 <GitHubTransformation
                   entities={entities}
@@ -297,7 +316,7 @@ export const ScopeConfigForm = ({
           </Card>
           <Flex justify="flex-end" gap="small">
             <Button onClick={handlePrevStep}>Prev</Button>
-            <Button type="primary" loading={operating} disabled={hasError} onClick={handleSubmit}>
+            <Button type="primary" loading={operating} disabled={hasError || !name || !entities.length} onClick={handleSubmit}>
               Save
             </Button>
           </Flex>

@@ -59,6 +59,10 @@ const URLS = {
       RATE_LIMIT: 'https://devlake.apache.org/docs/Configuration/CircleCI#fixed-rate-limit-optional',
       TRANSFORMATION: 'https://devlake.apache.org/docs/Configuration/CircleCI#step-13---adding-scope-config-optional',
     },
+    CLICKUP: {
+      BASIS: 'https://devlake.apache.org/docs/Configuration/ClickUp',
+      TRANSFORMATION: 'https://devlake.apache.org/docs/Configuration/ClickUp#step-3---adding-transformation-rules-optional',
+    },
     GITHUB: {
       BASIS: 'https://devlake.apache.org/docs/Configuration/GitHub',
       RATE_LIMIT: 'https://devlake.apache.org/docs/Configuration/GitHub#fixed-rate-limit-optional',
